@@ -1,9 +1,9 @@
 [project]
 name = "kaa-rest-client"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python client library for KaaIoT platform REST APIs"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.8"
 dependencies = [
     "httpx>=0.28",
 ]
