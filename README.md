@@ -114,6 +114,53 @@ data = await epts.get_time_series_data(
 )
 ```
 
+### EcrClient (Endpoint Configuration Registry)
+
+Manages endpoint-delivered configurations, application-version defaults,
+configuration schemas/statuses, and platform-side system configurations.
+
+```python
+from kaa_rest_client import EcrClient, KaaClient
+
+async with KaaClient(bearer_token="your-token") as kaa:
+    ecr = EcrClient(kaa)
+
+    result = await ecr.get_endpoint_configuration("endpoint-id", "app-v1")
+    print(result.data.config)
+    print(result.etag)
+```
+
+ECR configuration responses encode the `config` field as a JSON string. The
+client parses valid JSON strings into dictionaries, lists, scalar values, or
+`None`; malformed JSON remains the original string. Endpoint configuration
+requests are sent as raw JSON bodies.
+
+System configurations can use a DTO, which serializes structured configuration
+values into the API's string field:
+
+```python
+from kaa_rest_client import SystemConfigurationInput
+
+body = SystemConfigurationInput(
+    name="alert-email-recipients",
+    display_name="Alert email recipients",
+    config={"emails": ["alert-monitor@acme.com"]},
+)
+
+async with KaaClient(bearer_token="your-token") as kaa:
+    ecr = EcrClient(kaa)
+    await ecr.create_application_config("my-app", body)
+    current = await ecr.get_current_application_config("my-app")
+    print(current.data.config)
+```
+
+System configuration (`/system/...`) is primarily for static defaults or
+platform-side static configuration. Updating it does not directly ship the
+configuration to devices over MQTT. Use endpoint/application-version
+configuration methods for device-delivered configuration. ECR methods return
+an `EcrResponse` containing `data`, `status_code`, and response headers such as
+`ETag` and `Location`.
+
 ### AsfClient (Analytics Security Facade)
 
 Manages ingest pipelines, index templates, and searches documents.
@@ -129,6 +176,62 @@ pipeline = await asf.get_pipeline("my-pipeline")
 results = await asf.search_documents("tenant-id", "my-app", "2024.01.15", {
     "query": {"match_all": {}}
 })
+```
+
+### ReClient (Rule Engine)
+
+Manages rules, actions, triggers, alerts, alert settings, and rule execution.
+
+```python
+re = ReClient(kaa)
+
+# Rules
+rules = await re.list_rules()
+rule = await re.get_rule("rule-id")
+await re.execute_rule("rule-id")
+
+# Alerts
+alerts = await re.list_alerts(entity_type="endpoint", state="OPEN")
+```
+
+### TektonClient (Application and Configuration Management)
+
+Manages service instances, applications, application versions, application and
+tenant configurations, and bulk configuration exports.
+
+```python
+tekton = TektonClient(kaa)
+
+applications = await tekton.list_applications()
+versions = await tekton.list_app_versions("my-app")
+config = await tekton.get_app_config("my-app")
+export = await tekton.bulk_export()
+```
+
+### AmClient (Asset Management)
+
+Manages asset types, assets, and relations between platform entities.
+
+```python
+am = AmClient(kaa)
+
+asset_types = await am.list_asset_types()
+assets = await am.list_assets()
+relations = await am.get_relations("entity-id")
+```
+
+### TenantManagerClient (Tenant Manager)
+
+Manages tenants, tenant credentials, package types, subscriptions, and user
+templates.
+
+```python
+tenant_manager = TenantManagerClient(kaa)
+
+tenants = await tenant_manager.list_tenants(limit=10)
+tenant = await tenant_manager.get_tenant("tenant-id")
+credentials = await tenant_manager.get_tenant_credentials("tenant-id")
+subscriptions = await tenant_manager.list_subscriptions("tenant-id")
 ```
 
 ## Connection Pooling

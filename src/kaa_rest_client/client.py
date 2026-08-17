@@ -49,7 +49,7 @@ class KaaClient:
             return {"Authorization": f"Bearer {bearer_token}"}
         return {}
 
-    async def request(
+    async def request_response(
         self,
         method: str,
         path: str,
@@ -58,7 +58,7 @@ class KaaClient:
         json: Any = None,
         headers: dict[str, str] | None = None,
         content_type: str | None = None,
-    ) -> Any:
+    ) -> httpx.Response:
         base = (request_base_url.get() or self.base_url).rstrip("/")
         url = f"{base}{path}"
         hdrs = self._auth_headers()
@@ -81,6 +81,27 @@ class KaaClient:
             raise KaaNotFoundError(resp.status_code, resp.text)
         if resp.status_code >= 400:
             raise KaaApiError(resp.status_code, resp.text)
+
+        return resp
+
+    async def request(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        json: Any = None,
+        headers: dict[str, str] | None = None,
+        content_type: str | None = None,
+    ) -> Any:
+        resp = await self.request_response(
+            method,
+            path,
+            params=params,
+            json=json,
+            headers=headers,
+            content_type=content_type,
+        )
 
         if resp.status_code == 204:
             return None

@@ -148,3 +148,7 @@ cython_debug/
 # OS files
 .DS_Store
 Thumbs.db
+.serena
+
+# Local Superpowers planning documents
+docs/superpowers/
