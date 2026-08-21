@@ -18,8 +18,23 @@ from .ecr_models import (
 )
 
 
+DEFAULT_CONFIGURATION_NAME = "default"
+
+
 def _clean(params: Mapping[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in params.items() if value is not None}
+
+
+def _configuration_params(
+    name: Optional[str] = None,
+    **params: Any,
+) -> dict[str, Any]:
+    # The API requires this selector for named/current configurations even
+    # though the published OpenAPI document does not declare the parameter.
+    return _clean({
+        "name": name or DEFAULT_CONFIGURATION_NAME,
+        **params,
+    })
 
 
 def _decode_response(response: httpx.Response) -> Any:
@@ -108,10 +123,13 @@ class EcrClient:
         endpoint_id: str,
         app_version_name: str,
         body: JsonValue,
+        *,
+        name: Optional[str] = None,
     ) -> EcrResponse[EndpointConfiguration]:
         return await self._request(
             "PUT",
             f"{self.PREFIX}/endpoints/{endpoint_id}/app-versions/{app_version_name}",
+            params=_configuration_params(name),
             body=body,
             parser=_endpoint_configuration,
         )
@@ -120,10 +138,13 @@ class EcrClient:
         self,
         endpoint_id: str,
         app_version_name: str,
+        *,
+        name: Optional[str] = None,
     ) -> EcrResponse[EndpointConfiguration]:
         return await self._request(
             "GET",
             f"{self.PREFIX}/endpoints/{endpoint_id}/app-versions/{app_version_name}",
+            params=_configuration_params(name),
             parser=_endpoint_configuration,
         )
 
@@ -131,10 +152,13 @@ class EcrClient:
         self,
         endpoint_id: str,
         app_version_name: str,
+        *,
+        name: Optional[str] = None,
     ) -> EcrResponse[None]:
         return await self._request(
             "DELETE",
             f"{self.PREFIX}/endpoints/{endpoint_id}/app-versions/{app_version_name}",
+            params=_configuration_params(name),
         )
 
     async def list_endpoint_configurations(
@@ -151,10 +175,13 @@ class EcrClient:
     async def bulk_upsert_endpoint_configurations(
         self,
         body: BulkConfigurationRequest | Mapping[str, Any],
+        *,
+        name: Optional[str] = None,
     ) -> EcrResponse[None]:
         return await self._request(
             "PUT",
             f"{self.PREFIX}/endpoints/batch",
+            params=_configuration_params(name),
             body=body,
         )
 
@@ -162,10 +189,13 @@ class EcrClient:
         self,
         filter_id: str,
         body: JsonValue,
+        *,
+        name: Optional[str] = None,
     ) -> EcrResponse[None]:
         return await self._request(
             "PUT",
             f"{self.PREFIX}/endpoints/filters/{filter_id}",
+            params=_configuration_params(name),
             body=body,
         )
 
@@ -173,10 +203,13 @@ class EcrClient:
         self,
         app_version_name: str,
         body: JsonValue,
+        *,
+        name: Optional[str] = None,
     ) -> EcrResponse[EndpointConfiguration]:
         return await self._request(
             "PUT",
             f"{self.PREFIX}/app-versions/{app_version_name}",
+            params=_configuration_params(name),
             body=body,
             parser=_endpoint_configuration,
         )
@@ -184,20 +217,26 @@ class EcrClient:
     async def get_app_version_configuration(
         self,
         app_version_name: str,
+        *,
+        name: Optional[str] = None,
     ) -> EcrResponse[EndpointConfiguration]:
         return await self._request(
             "GET",
             f"{self.PREFIX}/app-versions/{app_version_name}",
+            params=_configuration_params(name),
             parser=_endpoint_configuration,
         )
 
     async def delete_app_version_configuration(
         self,
         app_version_name: str,
+        *,
+        name: Optional[str] = None,
     ) -> EcrResponse[None]:
         return await self._request(
             "DELETE",
             f"{self.PREFIX}/app-versions/{app_version_name}",
+            params=_configuration_params(name),
         )
 
     async def list_app_version_configurations(
@@ -280,10 +319,13 @@ class EcrClient:
     async def get_current_tenant_config(
         self,
         tenant_id: str,
+        *,
+        name: Optional[str] = None,
     ) -> EcrResponse[SystemConfiguration]:
         return await self._request(
             "GET",
             f"{self.PREFIX}/system/tenants/{tenant_id}/configs/current",
+            params=_configuration_params(name),
             parser=_system_configuration,
         )
 
@@ -345,9 +387,13 @@ class EcrClient:
         self,
         app_name: str,
         *,
+        name: Optional[str] = None,
         tree_traversal_strategy: Optional[str] = None,
     ) -> EcrResponse[SystemConfiguration]:
-        params = _clean({"treeTraversalStrategy": tree_traversal_strategy})
+        params = _configuration_params(
+            name,
+            treeTraversalStrategy=tree_traversal_strategy,
+        )
         return await self._request(
             "GET",
             f"{self.PREFIX}/system/applications/{app_name}/configs/current",
@@ -413,9 +459,13 @@ class EcrClient:
         self,
         app_version_name: str,
         *,
+        name: Optional[str] = None,
         tree_traversal_strategy: Optional[str] = None,
     ) -> EcrResponse[SystemConfiguration]:
-        params = _clean({"treeTraversalStrategy": tree_traversal_strategy})
+        params = _configuration_params(
+            name,
+            treeTraversalStrategy=tree_traversal_strategy,
+        )
         return await self._request(
             "GET",
             f"{self.PREFIX}/system/app-versions/{app_version_name}/configs/current",
@@ -481,9 +531,13 @@ class EcrClient:
         self,
         endpoint_id: str,
         *,
+        name: Optional[str] = None,
         tree_traversal_strategy: Optional[str] = None,
     ) -> EcrResponse[SystemConfiguration]:
-        params = _clean({"treeTraversalStrategy": tree_traversal_strategy})
+        params = _configuration_params(
+            name,
+            treeTraversalStrategy=tree_traversal_strategy,
+        )
         return await self._request(
             "GET",
             f"{self.PREFIX}/system/endpoints/{endpoint_id}/configs/current",

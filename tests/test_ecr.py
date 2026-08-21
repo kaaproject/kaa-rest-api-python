@@ -31,6 +31,46 @@ SYSTEM_CONFIGURATION = {
 
 
 class EcrEndpointRouteTests(unittest.IsolatedAsyncioTestCase):
+    async def test_named_endpoint_configuration_defaults_and_overrides_name(self):
+        seen = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(request)
+            return httpx.Response(
+                200,
+                json=ENDPOINT_CONFIGURATION,
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+            ecr = EcrClient(KaaClient(base_url="https://example.test", client=http))
+
+            await ecr.get_endpoint_configuration("e1", "app-v1")
+            self.assertEqual(dict(seen[-1].url.params), {"name": "default"})
+
+            await ecr.get_endpoint_configuration(
+                "e1", "app-v1", name="night-mode",
+            )
+            self.assertEqual(dict(seen[-1].url.params), {"name": "night-mode"})
+
+            await ecr.upsert_endpoint_configuration(
+                "e1", "app-v1", {"active": True}, name="night-mode",
+            )
+            self.assertEqual(dict(seen[-1].url.params), {"name": "night-mode"})
+
+            await ecr.delete_endpoint_configuration(
+                "e1", "app-v1", name="night-mode",
+            )
+            self.assertEqual(dict(seen[-1].url.params), {"name": "night-mode"})
+
+            await ecr.get_app_version_configuration("app-v1")
+            self.assertEqual(dict(seen[-1].url.params), {"name": "default"})
+
+            await ecr.get_app_version_configuration(
+                "app-v1", name="night-mode",
+            )
+            self.assertEqual(dict(seen[-1].url.params), {"name": "night-mode"})
+
     async def test_endpoint_and_app_version_routes(self):
         seen = []
 
@@ -270,7 +310,9 @@ class EcrTenantApplicationRouteTests(unittest.IsolatedAsyncioTestCase):
                 ),
                 (
                     lambda: ecr.get_current_application_config(
-                        "app-1", tree_traversal_strategy="SKIP",
+                        "app-1",
+                        name="alert-email-recipients",
+                        tree_traversal_strategy="SKIP",
                     ),
                     "GET",
                     "/ecr/api/v1/system/applications/app-1/configs/current",
@@ -328,7 +370,15 @@ class EcrTenantApplicationRouteTests(unittest.IsolatedAsyncioTestCase):
                 if path.endswith("/applications/app-1/configs/current"):
                     self.assertEqual(
                         dict(request.url.params),
-                        {"treeTraversalStrategy": "SKIP"},
+                        {
+                            "name": "alert-email-recipients",
+                            "treeTraversalStrategy": "SKIP",
+                        },
+                    )
+                if path.endswith("/tenants/tenant-1/configs/current"):
+                    self.assertEqual(
+                        dict(request.url.params),
+                        {"name": "default"},
                     )
 
 
@@ -371,7 +421,9 @@ class EcrAppVersionEndpointSystemRouteTests(unittest.IsolatedAsyncioTestCase):
                 ),
                 (
                     lambda: ecr.get_current_app_version_config(
-                        "app-v1", tree_traversal_strategy="SKIP",
+                        "app-v1",
+                        name="alert-email-recipients",
+                        tree_traversal_strategy="SKIP",
                     ),
                     "GET",
                     "/ecr/api/v1/system/app-versions/app-v1/configs/current",
@@ -403,7 +455,9 @@ class EcrAppVersionEndpointSystemRouteTests(unittest.IsolatedAsyncioTestCase):
                 ),
                 (
                     lambda: ecr.get_current_endpoint_config(
-                        "e1", tree_traversal_strategy="SKIP",
+                        "e1",
+                        name="alert-email-recipients",
+                        tree_traversal_strategy="SKIP",
                     ),
                     "GET",
                     "/ecr/api/v1/system/endpoints/e1/configs/current",
@@ -436,10 +490,19 @@ class EcrAppVersionEndpointSystemRouteTests(unittest.IsolatedAsyncioTestCase):
                 elif method == "GET":
                     self.assertIsInstance(result.data, SystemConfiguration)
                 if path.endswith("/configs/current"):
-                    self.assertEqual(
-                        dict(request.url.params),
-                        {"treeTraversalStrategy": "SKIP"},
-                    )
+                    if path.endswith("/app-versions/app-v1/configs/current"):
+                        expected_params = {
+                            "name": "alert-email-recipients",
+                            "treeTraversalStrategy": "SKIP",
+                        }
+                    elif path.endswith("/endpoints/e1/configs/current"):
+                        expected_params = {
+                            "name": "alert-email-recipients",
+                            "treeTraversalStrategy": "SKIP",
+                        }
+                    else:
+                        expected_params = {"name": "default"}
+                    self.assertEqual(dict(request.url.params), expected_params)
 
 
 class EcrExportsTests(unittest.TestCase):

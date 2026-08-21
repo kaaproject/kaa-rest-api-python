@@ -130,6 +130,10 @@ async with KaaClient(bearer_token="your-token") as kaa:
     print(result.etag)
 ```
 
+Named endpoint-delivered and current system-configuration methods accept an
+optional `name`. When omitted, the client sends `name="default"`; pass a
+configuration name to address a named configuration.
+
 ECR configuration responses encode the `config` field as a JSON string. The
 client parses valid JSON strings into dictionaries, lists, scalar values, or
 `None`; malformed JSON remains the original string. Endpoint configuration
